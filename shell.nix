@@ -9,14 +9,13 @@ in pkgs.mkShell {
   ];
   buildInputs = [ trunk."@trunkio/launcher-1.2.7" ];
   shellHook = ''
-    trunk=${builtins.toString ./.trunk}
-    if [[ ! -e $trunk ]]; then
-      env --chdir=$TOP trunk init -yv
-    elif [[ -d $trunk ]]; then
-      true
-    else
-      rm -i $trunk
-      env --chdir=$TOP trunk init -yv
+    trunkdir=${builtins.toString ./.}
+    trunk=$trunkdir/.trunk
+    if [[ ! -d $trunk ]]; then
+      if [[ -e $trunk ]]; then
+        rm -i $trunk
+      fi
+      env --chdir=$trunkdir trunk init -yv
     fi
   '';
 }
