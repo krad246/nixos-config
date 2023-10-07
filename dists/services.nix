@@ -1,17 +1,15 @@
 { config, pkgs, ... }:
 let
-  nixpkgs-unstable = import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz") {
-    config = {
-      allowUnfree = true;
-      allowUnfreePredicate = (_: true);
+  nixpkgs-unstable = import (builtins.fetchTarball
+    "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz") {
+      config = {
+        allowUnfree = true;
+        allowUnfreePredicate = (_: true);
+      };
     };
-  };
-in
-{
-
-  imports = [ ./hardware-configuration.nix ];
+in {
   virtualisation = {
-    docker.enable = false;
+    docker.enable = true;
     libvirtd.enable = false;
   };
 
@@ -49,13 +47,8 @@ in
     lvm = {
       enable = true;
       dmeventd.enable = true;
-      boot = {
-        thin.enable = true;
-        vdo.enable = false;
-      };
-    };
-
-    locate.enable = true;
+      boot.thin.enable = true;
+   };
 
     # Bells and whistles from Pantheon
     pantheon = {
@@ -67,7 +60,6 @@ in
     fstrim.enable = true;
     system76-scheduler.enable = true;
 
-
     # Enable X11 windowing.
     # Select the Pantheon desktop environment (elementary OS)
     # Add extra indicators and panel plugins.
@@ -76,9 +68,7 @@ in
     xserver = {
       enable = true;
       enableCtrlAltBackspace = true;
-      # session = "pantheon";
-      desktopManager.pantheon =
-        nixpkgs-unstable.xserver.desktopManager.pantheon.override {
+      desktopManager.pantheon = {
           enable = true;
           extraWingpanelIndicators = with pkgs.pantheon; [
             wingpanel-indicator-network
@@ -118,6 +108,19 @@ in
     };
   };
 
+  # xdg-desktop-portal works by exposing a series of D-Bus interfaces
+  # known as portals under a well-known name
+  # (org.freedesktop.portal.Desktop) and object path
+  # (/org/freedesktop/portal/desktop).
+  # The portal interfaces include APIs for file access, opening URIs,
+  # printing and others.
+  services.dbus.enable = true;
+  xdg.portal = {
+    enable = true;
+    wlr.enable = true;
+    # gtk portal needed to make gtk apps happy
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+  };
 
   # ZRAM
   zramSwap = {
@@ -126,7 +129,4 @@ in
     memoryMax = 21474836480;
     algorithm = "zstd";
   };
-
-  xdg.portal.enable = true;
-
 }

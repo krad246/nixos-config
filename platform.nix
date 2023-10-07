@@ -17,7 +17,7 @@
 
   # Impermanence tmpfs root (lives in RAM)
   # TODO: Try tmpfs on ZRAM???
-  fileSystems."/" = pkgs.lib.mkForce {
+  fileSystems."/" = lib.mkForce {
     device = "tmpfs";
     fsType = "tmpfs";
     options = [ "defaults" "mode=755" "size=16G" ];
@@ -28,22 +28,30 @@
 
   # Persistent store for boot partition (FAT32)
   # no device / block IO files on this FS, and no sudo-ish binaries here.
-  fileSystems."/nix/persist/boot" = pkgs.lib.mkForce {
+  fileSystems."/nix/persist/boot" = {
     device = "/dev/disk/by-label/EFI";
     fsType = "vfat";
     neededForBoot = true;
-    options = [ "defaults" "noatime" "umask=0077" "nosuid" "nodev" ];
+    options = [
+      "defaults"
+      "noatime"
+      "umask=0077"
+      "nosuid"
+      "nodev"
+      "x-systemd.requires=/nix/persist"
+      "X-mount.mkdir"
+    ];
   };
 
-  fileSystems."/boot" = pkgs.lib.mkForce {
+  fileSystems."/boot" = {
     device = "/nix/persist/boot";
     fsType = "none";
-    options = [ "bind" ];
+    options = [ "bind" "x-systemd.requires=/nix/persist/boot" "X-mount.mkdir" ];
   };
 
   # Slow commit rate since Nix transactions are atomic
   # Rest is pretty standard fare for 'best BTRFS options reddit'
-  fileSystems."/nix" = pkgs.lib.mkForce {
+  fileSystems."/nix" = lib.mkForce {
     device = "/dev/vg0/nix";
     fsType = "btrfs";
     options = [
@@ -54,6 +62,8 @@
       "noatime"
       "autodefrag"
       "usebackuproot"
+      "x-systemd.requires=/"
+      "X-mount.mkdir"
     ];
     neededForBoot = true;
   };
@@ -62,7 +72,7 @@
   # this should be full of symlinks so should be pretty small
   # faster commit rate for quicker syncs here
   # Light compression for tiered speeds (RAM FS, light compress medium size FS, huge high compress store)
-  fileSystems."/nix/persist" = pkgs.lib.mkForce {
+  fileSystems."/nix/persist" = lib.mkForce {
     device = "/dev/vg0/dists";
     fsType = "btrfs";
     options = [
@@ -72,29 +82,31 @@
       "compress=zstd:1"
       "discard=async"
       "noatime"
+      "x-systemd.requires=/nix"
+      "X-mount.mkdir"
     ];
     neededForBoot = true;
   };
 
   # persistent config might as well live under the parent mount of /nix
-  fileSystems."/nix/config" = pkgs.lib.mkForce {
-    device = "/nix/persist/nix/config";
+  fileSystems."/nix/config" = {
+    device = "/nix/persist/nixos-config";
     fsType = "none";
-    options = [ "bind" ];
+    options = [ "bind" "x-systemd.requires=/nix/persist" "X-mount.mkdir" ];
   };
 
   # This is actually just /etc/nixos
-  fileSystems."/etc/nixos" = pkgs.lib.mkForce {
+  fileSystems."/etc/nixos" = lib.mkDefault {
     device = "/nix/config";
     fsType = "none";
-    options = [ "bind" ];
+    options = [ "bind" "x-systemd.requires=/nix/config" "X-mount.mkdir" ];
   };
 
   # OS config wil actually go in the 'distributions' directory
   # this should be full of symlinks so should be pretty small
   # faster commit rate for quicker syncs here
   # Light compression for tiered speeds (RAM FS, light compress medium size FS, huge high compress store)
-  fileSystems."/nix/persist/home" = pkgs.lib.mkForce {
+  fileSystems."/nix/persist/home" = lib.mkForce {
     device = "/dev/vg0/home";
     fsType = "btrfs";
     options = [
@@ -104,14 +116,21 @@
       "compress=zstd:1"
       "discard=async"
       "noatime"
+      "x-systemd.requires=/nix/persist"
+      "X-mount.mkdir"
     ];
+
     neededForBoot = true;
   };
 
-  fileSystems."/home" = pkgs.lib.mkForce {
+  fileSystems."/home" = lib.mkDefault {
     device = "/nix/persist/home";
     fsType = "none";
-    options = [ "bind" ];
+    options = [
+      "bind"
+      "x-systemd.requires=/nix/persist"
+      "X-mount.mkdir"
+    ];
   };
 
   swapDevices = [ ];

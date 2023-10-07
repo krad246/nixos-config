@@ -1,5 +1,4 @@
-{ config, pkgs, ... }:
-{
+{ config, pkgs, ... }: {
   programs = {
     bash = {
       enableLsColors = true;
@@ -51,55 +50,16 @@
     ];
 
     systemPackages = with pkgs; [
-      # gnu common utils and super common wrappers, etc.
-      binutils
-      coreutils-full # use the bigger coreutils
-      moreutils
-      patchutils
-      renameutils
+      coreutils-full moreutils toybox
+      patchutils renameutils
       util-linux
-
-      autoconf
-      automake
-      autogen
-      bison
-      flex
-      m4
-      yacc
-
-      libtool
-      libtool
-
-      gnumake
-
-      wget
-      curl
-
-      file
-      killall
-
-      unstable.
-
-      stdenv.cc
-      python3Full
-
-      # paging
-      less
-      lesspipe
-      nvimpager
-
-      cachix # binary caching for nix
-      plocate # fs indexing
-
-      # wacom
-      xf86_input_wacom
-      wacomtablet
-      libwacom
-
-      lshw
+ 
+      asdf gnumake stdenv.cc
+      curl git wget
+      
+      glances lshw neofetch
 
       neovim
-
     ];
 
     shells = with pkgs; [ bash zsh ];
