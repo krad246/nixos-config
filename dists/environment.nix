@@ -1,10 +1,17 @@
-{ config, pkgs, ... }: {
+{ config, pkgs, ... }:
+let nixpkgs = import <nixpkgs> { };
+in {
   programs = {
     bash = {
       enableLsColors = true;
       enableCompletion = true;
+      blesh.enable = true;
     };
-
+    ccache = {
+      enable = true;
+      packageNames = [ "stdenv.cc" ];
+    };
+    command-not-found.enable = true;
     dconf.enable = true;
     direnv = {
       enable = true;
@@ -50,14 +57,23 @@
     ];
 
     systemPackages = with pkgs; [
-      coreutils-full moreutils toybox
-      patchutils renameutils
+      coreutils-full
+      moreutils
+      toybox
+      patchutils
+      renameutils
       util-linux
- 
-      asdf gnumake stdenv.cc
-      curl git wget
-      
-      glances lshw neofetch
+
+      asdf
+      gnumake
+      stdenv.cc
+      curl
+      git
+      wget
+
+      glances
+      lshw
+      neofetch
 
       neovim
     ];

@@ -1,9 +1,20 @@
-{ config, lib, pkgs, modulesPath, ... }: {
-  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
+{ config, lib, pkgs, modulesPath, ... }:
+let
+  cryptdata = "/dev/disk/by-label/cryptdata";
+  vg0-nix = "/dev/vg0/nix";
+  vg0-home = "/dev/vg0/home";
+  mount-mkdir = [ "x-mount.mkdir" ];
+  vfat-opts = [ "nosuid" "nodev" "noexec" "umask=0077" ] ++ mount-mkdir;
+  btrfs-opts = [ "noatime" "compress=zstd:1" "discard=async" ] ++ mount-mkdir;
+in {
+  imports = [
+    (modulesPath + "/installer/scan/not-detected.nix")
+    ./hardware-configuration.nix
+  ];
 
-  boot.initrd.luks.devices = {
+  boot.initrd.luks.devices = lib.mkAfter {
     root = {
-      device = "/dev/disk/by-label/cryptdata";
+      device = cryptdata;
       preLVM = true;
       allowDiscards = true;
     };
@@ -20,7 +31,7 @@
   fileSystems."/" = lib.mkForce {
     device = "tmpfs";
     fsType = "tmpfs";
-    options = [ "defaults" "mode=755" "size=16G" ];
+    options = [ "defaults" "mode=755" ];
     neededForBoot = true;
   };
 
@@ -28,112 +39,46 @@
 
   # Persistent store for boot partition (FAT32)
   # no device / block IO files on this FS, and no sudo-ish binaries here.
-  fileSystems."/nix/persist/boot" = {
+  fileSystems."/boot" = lib.mkDefault {
     device = "/dev/disk/by-label/EFI";
     fsType = "vfat";
-    neededForBoot = true;
-    options = [
-      "defaults"
-      "noatime"
-      "umask=0077"
-      "nosuid"
-      "nodev"
-      "x-systemd.requires=/nix/persist"
-      "X-mount.mkdir"
-    ];
+    options = vfat-opts;
   };
 
-  fileSystems."/boot" = {
-    device = "/nix/persist/boot";
-    fsType = "none";
-    options = [ "bind" "x-systemd.requires=/nix/persist/boot" "X-mount.mkdir" ];
-  };
-
-  # Slow commit rate since Nix transactions are atomic
-  # Rest is pretty standard fare for 'best BTRFS options reddit'
-  fileSystems."/nix" = lib.mkForce {
-    device = "/dev/vg0/nix";
+  fileSystems."/nix" = lib.mkDefault {
+    device = vg0-nix;
     fsType = "btrfs";
-    options = [
-      "defaults"
-      "commit=120"
-      "compress=zstd:1"
-      "discard=async"
-      "noatime"
-      "autodefrag"
-      "usebackuproot"
-      "x-systemd.requires=/"
-      "X-mount.mkdir"
-    ];
+    options = btrfs-opts ++ [ "subvol=@" ];
     neededForBoot = true;
   };
 
-  # OS config wil actually go in the 'distributions' directory
-  # this should be full of symlinks so should be pretty small
-  # faster commit rate for quicker syncs here
-  # Light compression for tiered speeds (RAM FS, light compress medium size FS, huge high compress store)
+  fileSystems."/nix/store" = lib.mkDefault {
+    device = vg0-nix;
+    fsType = "btrfs";
+    options = btrfs-opts ++ [ "subvol=@store" "x-systend.after=/nix" ];
+    neededForBoot = true;
+  };
+
   fileSystems."/nix/persist" = lib.mkForce {
-    device = "/dev/vg0/dists";
+    device = vg0-nix;
     fsType = "btrfs";
-    options = [
-      "subvol=@"
-      "defaults"
-      "commit=60"
-      "compress=zstd:1"
-      "discard=async"
-      "noatime"
-      "x-systemd.requires=/nix"
-      "X-mount.mkdir"
-    ];
+    options = btrfs-opts ++ [ "subvol=@persist" "x-systend.after=/nix" ];
     neededForBoot = true;
   };
 
-  # persistent config might as well live under the parent mount of /nix
-  fileSystems."/nix/config" = {
-    device = "/nix/persist/nixos-config";
-    fsType = "none";
-    options = [ "bind" "x-systemd.requires=/nix/persist" "X-mount.mkdir" ];
-  };
-
-  # This is actually just /etc/nixos
-  fileSystems."/etc/nixos" = lib.mkDefault {
-    device = "/nix/config";
-    fsType = "none";
-    options = [ "bind" "x-systemd.requires=/nix/config" "X-mount.mkdir" ];
-  };
-
-  # OS config wil actually go in the 'distributions' directory
-  # this should be full of symlinks so should be pretty small
-  # faster commit rate for quicker syncs here
   # Light compression for tiered speeds (RAM FS, light compress medium size FS, huge high compress store)
-  fileSystems."/nix/persist/home" = lib.mkForce {
-    device = "/dev/vg0/home";
+  fileSystems."/home" = lib.mkDefault {
+    device = vg0-home;
     fsType = "btrfs";
-    options = [
-      "subvol=@home"
-      "defaults"
-      "commit=60"
-      "compress=zstd:1"
-      "discard=async"
-      "noatime"
-      "x-systemd.requires=/nix/persist"
-      "X-mount.mkdir"
-    ];
-
+    options = btrfs-opts ++ [ "subvol=@home" ];
     neededForBoot = true;
   };
 
-  fileSystems."/home" = lib.mkDefault {
-    device = "/nix/persist/home";
+  fileSystems."/etc/nixos" = lib.mkForce {
+    device = "/nix/persist/etc/nixos";
     fsType = "none";
-    options = [
-      "bind"
-      "x-systemd.requires=/nix/persist"
-      "X-mount.mkdir"
-    ];
+    options = [ "bind" "x-systemd.requires=/nix/persist" ];
   };
-
-  swapDevices = [ ];
 
   # ZRAM
   zramSwap = {
@@ -148,11 +93,36 @@
   # still possible to use this option, but it's recommended to use it in conjunction
   # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
   networking.useDHCP = lib.mkDefault true;
-  networking.interfaces.eno1.useDHCP = lib.mkDefault true;
-  networking.interfaces.wlp11s0.useDHCP = lib.mkDefault true;
-
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode =
     lib.mkDefault config.hardware.enableRedistributableFirmware;
 
+  environment.persistence."/nix/persist" = {
+    hideMounts = false;
+    directories = [
+      # journalctl
+      "/var/log"
+
+      # nix configuration and state files
+      #      {
+      #        directory = "/etc/nixos";
+      #        user = "nobody";
+      #        group = "users";
+      #        mode = "0755";
+      #      }
+      "/var/lib/nixos"
+
+      # managed by systemd; drivers, etc.
+      "/etc/NetworkManager/system-connections"
+      "/var/lib/bluetooth"
+      "/var/lib/colord"
+      "/var/lib/NetworkManager"
+      "/var/lib/systemd"
+
+      # service-specific caches, such as CCache.
+      "/var/cache/ccache"
+    ];
+
+    files = [ "/etc/machine-id" "/etc/adjtime" ];
+  };
 }

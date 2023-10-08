@@ -5,14 +5,22 @@
 let
   impermanence = builtins.fetchTarball
     "https://github.com/nix-community/impermanence/archive/master.tar.gz";
+
+  home-manager = builtins.fetchTarball
+    "https://github.com/nix-community/home-manager/archive/release-23.05.tar.gz";
+
 in {
   imports = [
+    "${impermanence}/nixos.nix"
+    "${home-manager}/nixos"
+
+    ./hardware-configuration.nix
     ./platform.nix
+
     ./dists/boot.nix
     ./dists/environment.nix
     ./dists/locale.nix
     ./dists/services.nix
-    "${impermanence}/nixos.nix"
   ];
 
   # enable nix multi-call binaries (nix search etc.)
@@ -45,47 +53,10 @@ in {
 
   # See home.nix for userspace management.
   users.mutableUsers = false;
-  users.users.root.initialPassword = "nix";
-
-  environment.persistence."/nix/persist" = {
-    hideMounts = true;
-
-    directories = [
-      "/boot"
-      "/nix"
-      "/home"
-      "/etc/nixos"
-      "/etc"
-
-      "/etc/NetworkManager/system-connections"
-
-      "/var/tmp"
-      "/tmp"
-
-      "/var/log"
-
-      "/var/lib/bluetooth"
-      "/var/lib/nixos"
-      "/var/lib/systemd"
-      {
-        directory = "/var/lib/colord";
-        user = "colord";
-        group = "colord";
-        mode = "u=rwx,g=rx,o=";
-      }
-
-      "/var/spool"
-      "/var/db"
-    ];
-
-    files = [ "/etc/machine-id" ];
-  };
-
-  # Add me!!!
   users.users.keerthi = {
     isNormalUser = true;
     description = "Keerthi R.";
     initialPassword = "nix";
-    extraGroups = [ "wheel" "sudo" "networkmanager" "plugdev" "dialout" ];
+    extraGroups = [ "wheel" "sudo" "root" "networkmanager" ];
   };
 }

@@ -3,8 +3,10 @@
   # EFI loader configs
   boot = {
     kernelPackages = pkgs.linuxPackages_latest;
-    crashDump.enable = true;
-    hardwareScan = true;
+
+    # Some additional features that *unfortunately* need a recompile.
+    crashDump.enable = false;
+    hardwareScan = false;
 
     # EFI loader is gummiboot
     loader = {

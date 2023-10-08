@@ -9,3 +9,4 @@
 # nix-build intermediates.
 /result
 /result-*
+/**.qcow2
