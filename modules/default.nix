@@ -1,3 +1,3 @@
-{
-  imports = [ ./nixos ]; 
+{ pkgs, ... }: {
+  imports = [ ./shims ] ++ [ ./darwin ];
 }

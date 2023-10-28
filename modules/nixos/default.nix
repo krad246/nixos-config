@@ -1,5 +1,5 @@
 {
-   imports = [
+  imports = [
     ./boot.nix
     ./environment.nix
     ./filesystems.nix

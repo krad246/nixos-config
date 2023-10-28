@@ -1,3 +1,3 @@
 {
-  imports = [ ./configuration.nix ] ++ [ ./home-manager ];
+  imports = [ ./configuration.nix ];
 }

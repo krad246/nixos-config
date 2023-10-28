@@ -1,2 +1,2 @@
-{ pkgs ? import <nixpkgs> {} }:
-pkgs.callPackage ./trunk.nix {}
+{ pkgs ? import <nixpkgs> { } }:
+pkgs.callPackage ./trunk.nix { }

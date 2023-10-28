@@ -1,0 +1,3 @@
+[submodule "nix-helpers"]
+	path = helpers
+	url = https://github.com/Warbo/nix-helpers.git

@@ -1,19 +1,20 @@
-{ config, pkgs, stateVersion ? "23.05", ... }:
+{ config, pkgs, ... }@args:
+let inherit (args) hostname username; in
 {
   system = {
-    inherit stateVersion;
-    copySystemConfiguration = true;
-    autoUpgrade = {
-      enable = true;
-      allowReboot = true;
-    };
+    # inherit (args) stateVersion;
+    # copySystemConfiguration = true;
+    # autoUpgrade = {
+    #   enable = true;
+    #   allowReboot = true;
+    # };
   };
 
   nix = {
-    optimise.automatic = true;
-    gc = { 
-      automatic = true; 
-      dates = "weekly"; 
+    # optimise.automatic = true;
+    gc = {
+      automatic = true;
+      # dates = "weekly";
     };
 
     settings = {
@@ -22,7 +23,8 @@
       sandbox = true;
     };
   };
-  
+
   # rest of the config is behind
-  imports = [ ../modules ];
+  imports = [ ../modules ] ++
+    [ ./nix-daemon.nix ./system-settings.nix ./system-packages.nix ];
 }
