@@ -5,13 +5,14 @@ let
     ref = "nixos-23.05";
   });
 
-  unstable = import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz"){
+  unstable = import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz") {
     config = {
       allowUnfree = true;
       allowUnfreePredicate = (_: true);
     };
   };
-in {
+in
+{
 
   # External, non-FOSS imports
   nixpkgs = {
